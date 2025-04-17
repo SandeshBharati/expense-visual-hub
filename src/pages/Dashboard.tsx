@@ -1,5 +1,7 @@
 
 import { useTransactions } from "@/context/TransactionContext";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import BalanceCard from "@/components/BalanceCard";
 import ExpensesPieChart from "@/components/ExpensesPieChart";
@@ -7,10 +9,12 @@ import MonthlyChart from "@/components/MonthlyChart";
 import RecentTransactionsList from "@/components/RecentTransactionsList";
 import { Button } from "@/components/ui/button";
 import { Download, Plus } from "lucide-react";
+import AddTransactionDialog from "@/components/AddTransactionDialog";
 
 const Dashboard = () => {
   const {
     transactions,
+    addTransaction,
     balance,
     expensesByCategory,
     incomesByCategory,
@@ -18,6 +22,8 @@ const Dashboard = () => {
     exportToCSV,
     loading,
   } = useTransactions();
+
+  const navigate = useNavigate();
 
   // Calculate total incomes and expenses
   const totalIncome = transactions
@@ -41,10 +47,7 @@ const Dashboard = () => {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button className="flex items-center">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
-          </Button>
+          <AddTransactionDialog onAddTransaction={addTransaction} />
         </div>
       </div>
 
@@ -60,7 +63,7 @@ const Dashboard = () => {
               totalIncome={totalIncome}
               totalExpense={totalExpense}
             />
-            <RecentTransactionsList transactions={transactions} />
+            <RecentTransactionsList transactions={transactions.slice(0, 5)} />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

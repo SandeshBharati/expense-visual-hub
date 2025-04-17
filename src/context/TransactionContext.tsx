@@ -66,8 +66,45 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
     try {
-      transactionService.addTransaction(transaction);
-      loadTransactions(); // Reload data
+      const newTransaction = transactionService.addTransaction(transaction);
+      
+      // Update state with new transaction
+      setTransactions(prev => [...prev, newTransaction]);
+      
+      // Recalculate balance
+      if (transaction.type === 'income') {
+        setBalance(prev => prev + transaction.amount);
+      } else {
+        setBalance(prev => prev - transaction.amount);
+      }
+      
+      // Update category data
+      if (transaction.type === 'expense') {
+        setExpensesByCategory(prev => ({
+          ...prev,
+          [transaction.category]: (prev[transaction.category] || 0) + transaction.amount
+        }));
+      } else {
+        setIncomesByCategory(prev => ({
+          ...prev,
+          [transaction.category]: (prev[transaction.category] || 0) + transaction.amount
+        }));
+      }
+      
+      // Update monthly data
+      const date = new Date(transaction.date);
+      const month = date.getMonth();
+      
+      setMonthlyData(prev => {
+        const updatedData = { ...prev };
+        if (transaction.type === 'expense') {
+          updatedData.expenses[month] += transaction.amount;
+        } else {
+          updatedData.incomes[month] += transaction.amount;
+        }
+        return updatedData;
+      });
+      
       toast.success('Transaction added successfully');
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -77,8 +114,58 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
   const handleDeleteTransaction = (id: string) => {
     try {
+      // Find transaction before deleting
+      const transaction = transactions.find(t => t.id === id);
+      if (!transaction) return;
+      
+      // Delete transaction
       transactionService.deleteTransaction(id);
-      loadTransactions(); // Reload data
+      
+      // Update state
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      
+      // Update balance
+      if (transaction.type === 'income') {
+        setBalance(prev => prev - transaction.amount);
+      } else {
+        setBalance(prev => prev + transaction.amount);
+      }
+      
+      // Update category data
+      if (transaction.type === 'expense') {
+        setExpensesByCategory(prev => {
+          const updated = { ...prev };
+          updated[transaction.category] -= transaction.amount;
+          if (updated[transaction.category] <= 0) {
+            delete updated[transaction.category];
+          }
+          return updated;
+        });
+      } else {
+        setIncomesByCategory(prev => {
+          const updated = { ...prev };
+          updated[transaction.category] -= transaction.amount;
+          if (updated[transaction.category] <= 0) {
+            delete updated[transaction.category];
+          }
+          return updated;
+        });
+      }
+      
+      // Update monthly data
+      const date = new Date(transaction.date);
+      const month = date.getMonth();
+      
+      setMonthlyData(prev => {
+        const updatedData = { ...prev };
+        if (transaction.type === 'expense') {
+          updatedData.expenses[month] -= transaction.amount;
+        } else {
+          updatedData.incomes[month] -= transaction.amount;
+        }
+        return updatedData;
+      });
+      
       toast.success('Transaction deleted successfully');
     } catch (error) {
       console.error('Error deleting transaction:', error);
@@ -88,13 +175,17 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
   const handleUpdateTransaction = (id: string, updatedData: Partial<Transaction>) => {
     try {
+      // Update the transaction
       const result = transactionService.updateTransaction(id, updatedData);
-      if (result) {
-        loadTransactions(); // Reload data
-        toast.success('Transaction updated successfully');
-      } else {
+      if (!result) {
         toast.error('Transaction not found');
+        return;
       }
+      
+      // Reload all data as the calculations can be complex with updates
+      loadTransactions();
+      
+      toast.success('Transaction updated successfully');
     } catch (error) {
       console.error('Error updating transaction:', error);
       toast.error('Failed to update transaction');

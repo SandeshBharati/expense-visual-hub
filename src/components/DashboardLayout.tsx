@@ -1,18 +1,17 @@
 
-import { useState, ReactNode } from "react";
+import { ReactNode } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
 import { 
-  Home, 
-  PieChart, 
+  LayoutDashboard, 
   CreditCard, 
-  BarChart3, 
-  Settings, 
-  LogOut,
-  Menu,
-  X
+  BarChart, 
+  PieChart, 
+  Settings,
+  LogOut 
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -20,102 +19,85 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { toast } = useToast();
 
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Transactions", href: "/transactions", icon: CreditCard },
-    { name: "Reports", href: "/reports", icon: BarChart3 },
-    { name: "Categories", href: "/categories", icon: PieChart },
-    { name: "Settings", href: "/settings", icon: Settings },
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out successfully",
+      description: "You have been logged out of your account"
+    });
+    navigate("/auth");
+  };
+
+  const navItems = [
+    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="mr-2 h-4 w-4" /> },
+    { path: "/transactions", label: "Transactions", icon: <CreditCard className="mr-2 h-4 w-4" /> },
+    { path: "/reports", label: "Reports", icon: <BarChart className="mr-2 h-4 w-4" /> },
+    { path: "/categories", label: "Categories", icon: <PieChart className="mr-2 h-4 w-4" /> },
+    { path: "/settings", label: "Settings", icon: <Settings className="mr-2 h-4 w-4" /> }
   ];
 
-  const isActiveRoute = (path: string) => {
-    return location.pathname === path;
-  };
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={toggleMobileMenu}
-        >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-40 w-64 transform bg-card shadow-lg transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
-        lg:translate-x-0
-      `}>
-        <div className="flex h-full flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-center h-16 border-b">
-              <h2 className="text-xl font-bold text-primary">Expense Visual Hub</h2>
-            </div>
-            
-            <div className="px-4 py-6">
-              <div className="mb-6 flex items-center">
-                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-primary font-semibold">
-                    {user?.name.charAt(0) || "U"}
-                  </span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{user?.name || "User"}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email || "user@example.com"}</p>
-                </div>
-              </div>
-
-              <nav className="space-y-1">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`
-                      flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      ${
-                        isActiveRoute(item.href)
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      }
-                    `}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+      <div className="hidden md:flex md:w-64 md:flex-col">
+        <div className="flex flex-col flex-grow border-r border-gray-200 bg-white pt-5 pb-4 overflow-y-auto">
+          <div className="flex items-center flex-shrink-0 px-4">
+            <h2 className="text-xl font-semibold text-primary">ExpenseVisualHub</h2>
           </div>
           
-          <div className="p-4 border-t">
-            <Button
-              variant="outline"
-              className="w-full flex items-center"
-              onClick={logout}
+          {user && (
+            <div className="mt-6 px-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
+                    {user.name.charAt(0)}
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <nav className="mt-8 flex-1 px-2 space-y-1">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`${
+                  location.pathname === item.path
+                    ? "bg-gray-100 text-primary"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          
+          <div className="mt-auto px-4 pb-4">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start" 
+              onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Log Out
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        <main className="min-h-screen p-4 md:p-8">
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <main className="flex-1 relative overflow-y-auto focus:outline-none p-6">
           {children}
         </main>
       </div>
