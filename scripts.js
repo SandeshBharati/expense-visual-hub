@@ -1,4 +1,3 @@
-
 // Constants for expense and income categories
 const ExpenseCategoryLabels = {
   food: 'Food & Dining',
@@ -376,7 +375,319 @@ const elements = {
 let monthlyChart = null;
 let expensePieChart = null;
 
-// Event listeners
+// Reports Page Functions
+function initializeReportsPage() {
+  updateExpensePieChart();
+  updateIncomePieChart();
+  updateMonthlyTrendChart();
+  updateBalanceLineChart();
+}
+
+function updateExpensePieChart() {
+  const expenseData = transactionService.getExpensesByCategory();
+  const ctx = document.getElementById('expense-pie-chart').getContext('2d');
+  
+  const data = Object.entries(expenseData).map(([category, amount]) => ({
+    label: ExpenseCategoryLabels[category] || category,
+    value: amount,
+    color: ExpenseCategoryColors[category] || '#999'
+  }));
+
+  new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [{
+        data: data.map(d => d.value),
+        backgroundColor: data.map(d => d.color)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.raw;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${formatCurrency(value)} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateIncomePieChart() {
+  const incomeData = transactionService.getIncomesByCategory();
+  const ctx = document.getElementById('income-pie-chart').getContext('2d');
+  
+  const data = Object.entries(incomeData).map(([category, amount]) => ({
+    label: IncomeCategoryLabels[category] || category,
+    value: amount,
+    color: IncomeCategoryColors[category] || '#999'
+  }));
+
+  new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [{
+        data: data.map(d => d.value),
+        backgroundColor: data.map(d => d.color)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.raw;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${formatCurrency(value)} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateMonthlyTrendChart() {
+  const monthlyData = transactionService.getMonthlyTotals(new Date().getFullYear());
+  const ctx = document.getElementById('monthly-trend-chart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [
+        {
+          label: 'Income',
+          data: monthlyData.incomes,
+          backgroundColor: '#4ade80',
+        },
+        {
+          label: 'Expenses',
+          data: monthlyData.expenses,
+          backgroundColor: '#f87171',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: value => formatCurrency(value)
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: context => `${context.dataset.label}: ${formatCurrency(context.raw)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateBalanceLineChart() {
+  const monthlyData = transactionService.getMonthlyTotals(new Date().getFullYear());
+  const ctx = document.getElementById('balance-line-chart').getContext('2d');
+
+  const balanceData = monthlyData.incomes.map((income, index) => 
+    income - monthlyData.expenses[index]
+  );
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [{
+        label: 'Net Balance',
+        data: balanceData,
+        borderColor: '#9b87f5',
+        tension: 0.1,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          ticks: {
+            callback: value => formatCurrency(value)
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: context => `Balance: ${formatCurrency(context.raw)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// Categories Page Functions
+function initializeCategoriesPage() {
+  renderExpenseCategories();
+  renderIncomeCategories();
+  setupCategoryTabs();
+}
+
+function renderExpenseCategories() {
+  const container = document.getElementById('expense-categories-grid');
+  container.innerHTML = '';
+
+  Object.entries(ExpenseCategoryLabels).forEach(([id, label]) => {
+    const card = document.createElement('div');
+    card.className = 'category-card';
+    card.innerHTML = `
+      <div class="category-icon" style="background-color: ${ExpenseCategoryColors[id]}">
+        ${label.charAt(0)}
+      </div>
+      <span>${label}</span>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderIncomeCategories() {
+  const container = document.getElementById('income-categories-grid');
+  container.innerHTML = '';
+
+  Object.entries(IncomeCategoryLabels).forEach(([id, label]) => {
+    const card = document.createElement('div');
+    card.className = 'category-card';
+    card.innerHTML = `
+      <div class="category-icon" style="background-color: ${IncomeCategoryColors[id]}">
+        ${label.charAt(0)}
+      </div>
+      <span>${label}</span>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function setupCategoryTabs() {
+  const tabBtns = document.querySelectorAll('.categories-tabs .tab-btn');
+  const tabContents = document.querySelectorAll('.categories-tabs .tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      
+      // Update active states
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+        if (content.id === tab) {
+          content.classList.add('active');
+        }
+      });
+    });
+  });
+}
+
+// Settings Page Functions
+function initializeSettingsPage() {
+  setupProfileForm();
+  setupPreferences();
+  setupDangerZone();
+}
+
+function setupProfileForm() {
+  const form = document.getElementById('profile-form');
+  const nameInput = document.getElementById('settings-name');
+  const emailInput = document.getElementById('settings-email');
+  
+  // Load current user data
+  const user = authService.getCurrentUser();
+  if (user) {
+    nameInput.value = user.name;
+    emailInput.value = user.email;
+  }
+  
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const updatedUser = {
+      ...user,
+      name: nameInput.value,
+      email: emailInput.value
+    };
+    
+    // Update user in localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.id === user.id);
+    if (userIndex !== -1) {
+      users[userIndex] = updatedUser;
+      localStorage.setItem('users', JSON.stringify(users));
+      authService.setCurrentUser(updatedUser);
+      showToast('Profile updated successfully', 'success');
+    }
+  });
+}
+
+function setupPreferences() {
+  const notificationsToggle = document.getElementById('email-notifications');
+  const currencySelect = document.getElementById('currency-select');
+  
+  // Load saved preferences
+  const preferences = JSON.parse(localStorage.getItem('preferences') || '{"notifications":true,"currency":"USD"}');
+  notificationsToggle.checked = preferences.notifications;
+  currencySelect.value = preferences.currency;
+  
+  // Save preferences on change
+  notificationsToggle.addEventListener('change', () => {
+    preferences.notifications = notificationsToggle.checked;
+    localStorage.setItem('preferences', JSON.stringify(preferences));
+    showToast('Preferences updated', 'success');
+  });
+  
+  currencySelect.addEventListener('change', () => {
+    preferences.currency = currencySelect.value;
+    localStorage.setItem('preferences', JSON.stringify(preferences));
+    showToast('Currency preference updated', 'success');
+  });
+}
+
+function setupDangerZone() {
+  const clearDataBtn = document.getElementById('clear-data');
+  
+  clearDataBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all your data? This cannot be undone.')) {
+      localStorage.removeItem('transactions');
+      showToast('All data has been cleared', 'success');
+      
+      // Reload the page after a brief delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  });
+}
+
+// Update event listeners to initialize new pages
 function setupEventListeners() {
   // Auth forms
   elements.switchToRegisterBtn.addEventListener('click', () => {
@@ -398,6 +709,15 @@ function setupEventListeners() {
       e.preventDefault();
       const page = item.getAttribute('data-page');
       navigateToPage(page);
+      
+      // Initialize specific page functionality
+      if (page === 'reports') {
+        initializeReportsPage();
+      } else if (page === 'categories') {
+        initializeCategoriesPage();
+      } else if (page === 'settings') {
+        initializeSettingsPage();
+      }
     });
   });
   
